@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consulta de Multas de Tránsito - Ciudadano</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 860px; margin: 30px auto; padding: 0 16px; background: #f3f6fa; }
+    h1 { color: #0f172a; }
+    .box { background: #fff; padding: 18px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 18px; }
+    input, button { padding: 9px 12px; font-size: 14px; margin-right: 8px; }
+    button { background: #1d4ed8; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #1e40af; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+    th { background: #e2e8f0; }
+    .pendiente { color: #b45309; font-weight: bold; }
+    .pagada { color: #15803d; font-weight: bold; }
+    .anulada { color: #b91c1c; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Consulta de Boletas de Infracción</h1>
+  <div class="box">
+    <label>CI Conductor: <input type="text" id="ci" placeholder="Ej. 1234567" /></label>
+    <label>Código Boleta: <input type="text" id="codigo" placeholder="Ej. MLT-1001" /></label>
+    <button onclick="buscarMultas()">Consultar Estado</button>
+    <div id="msg" style="margin-top:10px; color:#b91c1c; font-weight:bold;"></div>
+  </div>
+
+  <div class="box">
+    <h3>Resultados</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>CI</th>
+          <th>Conductor</th>
+          <th>Fecha</th>
+          <th>Infracción</th>
+          <th>Lugar</th>
+          <th>Monto</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:8000/api/multa';
+
+    async function buscarMultas() {
+      const ci = encodeURIComponent(document.getElementById('ci').value.trim());
+      const codigo = encodeURIComponent(document.getElementById('codigo').value.trim());
+      const msg = document.getElementById('msg');
+      const tbody = document.getElementById('tbody');
+      msg.textContent = '';
+      tbody.innerHTML = '';
+
+      try {
+        const res = await fetch(`${API_URL}?ci=${ci}&codigo=${codigo}`);
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = data.mensaje || 'Error al consultar multas';
+          return;
+        }
+        if (!Array.isArray(data) || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8">No se encontraron boletas registradas.</td></tr>';
+          return;
+        }
+        data.forEach(m => {
+          const estadoClass = (m.estado || '').toLowerCase();
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${m.codigo}</strong></td>
+            <td>${m.ci}</td>
+            <td>${m.nombre_conductor || '-'}</td>
+            <td>${m.fecha}</td>
+            <td>${m.tipo_infraccion}</td>
+            <td>${m.lugar}</td>
+            <td>Bs. ${m.monto}</td>
+            <td class="${estadoClass}">${String(m.estado).toUpperCase()}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        msg.textContent = 'No se pudo conectar con la Central de Registro (REST en puerto 8000).';
+      }
+    }
+  </script>
+</body>
+</html>
